@@ -1,0 +1,7 @@
+export const CHART_APPEARANCE_STORAGE_KEY = "daily-planner-chart-appearance"
+export const THEME_STORAGE_KEY = "daily-planner-theme"
+export const DIARY_STORAGE_KEY = "daily-planner-diary"
+export const SYNC_TOKEN_STORAGE_KEY = "daily-planner-sync-tokens"
+export const CALENDAR_STORAGE_KEY = "daily-planner-calendar-id"
+export const TEMPLATES_STORAGE_KEY = "daily-planner-custom-templates"
+export const ACCENT_THEME_STORAGE_KEY = "daily-planner-accent-theme"
