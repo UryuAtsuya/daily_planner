@@ -1,5 +1,5 @@
-import { google, calendar_v3 } from "googleapis"
-import { Task, getDateKey } from "@/features/day-view/types"
+import type { Task } from "@/features/day-view/types"
+import { getDateKey } from "@/features/day-view/types"
 
 export interface CalendarListItem {
   id: string
@@ -19,10 +19,87 @@ interface FetchEventsResult {
   tokenExpired?: boolean
 }
 
-function getCalendarClient(accessToken: string) {
-  const auth = new google.auth.OAuth2()
-  auth.setCredentials({ access_token: accessToken })
-  return google.calendar({ version: "v3", auth })
+interface GoogleCalendarDateTime {
+  dateTime?: string
+  date?: string
+  timeZone?: string
+}
+
+interface GoogleCalendarEvent {
+  id?: string
+  status?: string
+  summary?: string | null
+  description?: string | null
+  start?: GoogleCalendarDateTime
+  end?: GoogleCalendarDateTime
+}
+
+interface GoogleCalendarListResponse {
+  items?: GoogleCalendarEvent[]
+  nextSyncToken?: string
+}
+
+interface GoogleCalendarListEntry {
+  id?: string
+  summary?: string
+  primary?: boolean
+}
+
+interface GoogleCalendarListEntriesResponse {
+  items?: GoogleCalendarListEntry[]
+}
+
+interface GoogleCalendarApiError extends Error {
+  status?: number
+}
+
+const GOOGLE_CALENDAR_API_BASE = "https://www.googleapis.com/calendar/v3"
+
+async function googleCalendarRequest<T>(
+  accessToken: string,
+  path: string,
+  init?: RequestInit,
+  searchParams?: URLSearchParams
+): Promise<T> {
+  const url = new URL(path, GOOGLE_CALENDAR_API_BASE)
+
+  if (searchParams) {
+    url.search = searchParams.toString()
+  }
+
+  const response = await fetch(url, {
+    ...init,
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      ...(init?.body ? { "Content-Type": "application/json" } : {}),
+      ...init?.headers,
+    },
+  })
+
+  if (!response.ok) {
+    let message = `Google Calendar API request failed with status ${response.status}`
+
+    try {
+      const errorBody = (await response.json()) as {
+        error?: { message?: string }
+      }
+      if (errorBody.error?.message) {
+        message = errorBody.error.message
+      }
+    } catch {
+      // Ignore response parsing errors and keep the fallback message.
+    }
+
+    const error = new Error(message) as GoogleCalendarApiError
+    error.status = response.status
+    throw error
+  }
+
+  if (response.status === 204) {
+    return undefined as T
+  }
+
+  return (await response.json()) as T
 }
 
 function getDayRange(dateKey: string) {
@@ -36,30 +113,32 @@ export async function fetchEvents(
   accessToken: string,
   options: FetchEventsOptions
 ): Promise<FetchEventsResult> {
-  const calendar = getCalendarClient(accessToken)
-
-  const baseParams: calendar_v3.Params$Resource$Events$List = {
-    calendarId: options.calendarId,
-    singleEvents: true,
-    showDeleted: true,
-    maxResults: 2500,
-  }
+  const searchParams = new URLSearchParams({
+    singleEvents: "true",
+    showDeleted: "true",
+    maxResults: "2500",
+  })
 
   if (options.syncToken) {
-    baseParams.syncToken = options.syncToken
+    searchParams.set("syncToken", options.syncToken)
   } else {
     const { start, end } = getDayRange(options.dateKey)
-    baseParams.timeMin = start.toISOString()
-    baseParams.timeMax = end.toISOString()
-    baseParams.orderBy = "startTime"
+    searchParams.set("timeMin", start.toISOString())
+    searchParams.set("timeMax", end.toISOString())
+    searchParams.set("orderBy", "startTime")
   }
 
   try {
-    const response = await calendar.events.list(baseParams)
-    const events = response.data.items || []
+    const response = await googleCalendarRequest<GoogleCalendarListResponse>(
+      accessToken,
+      `/calendars/${encodeURIComponent(options.calendarId)}/events`,
+      undefined,
+      searchParams
+    )
+    const events = response.items || []
 
     const tasks = events
-      .filter((event): event is calendar_v3.Schema$Event & { id: string } => {
+      .filter((event): event is GoogleCalendarEvent & { id: string } => {
         if (!event.id) return false
         if (event.status === "cancelled") return false
         return !!event.start?.dateTime || !!event.start?.date
@@ -68,10 +147,10 @@ export async function fetchEvents(
 
     return {
       tasks,
-      nextSyncToken: response.data.nextSyncToken ?? undefined,
+      nextSyncToken: response.nextSyncToken ?? undefined,
     }
   } catch (error) {
-    if (typeof error === "object" && error && "code" in error && error.code === 410) {
+    if (typeof error === "object" && error && "status" in error && error.status === 410) {
       return { tasks: [], tokenExpired: true }
     }
     console.error("Google Calendar API error:", error)
@@ -80,13 +159,13 @@ export async function fetchEvents(
 }
 
 export async function listCalendars(accessToken: string): Promise<CalendarListItem[]> {
-  const calendar = getCalendarClient(accessToken)
-  const response = await calendar.calendarList.list()
+  const response = await googleCalendarRequest<GoogleCalendarListEntriesResponse>(
+    accessToken,
+    "/users/me/calendarList"
+  )
 
-  return (response.data.items || [])
-    .filter((item): item is calendar_v3.Schema$CalendarListEntry & { id: string; summary: string } =>
-      Boolean(item.id && item.summary)
-    )
+  return (response.items || [])
+    .filter((item): item is GoogleCalendarListEntry & { id: string; summary: string } => Boolean(item.id && item.summary))
     .map((item) => ({
       id: item.id,
       summary: item.summary,
@@ -94,7 +173,7 @@ export async function listCalendars(accessToken: string): Promise<CalendarListIt
     }))
 }
 
-function convertEventToTask(event: calendar_v3.Schema$Event, fallbackDateKey: string): Task {
+function convertEventToTask(event: GoogleCalendarEvent, fallbackDateKey: string): Task {
   const start = event.start?.dateTime || event.start?.date || ""
   const end = event.end?.dateTime || event.end?.date || ""
 
@@ -123,7 +202,7 @@ function convertEventToTask(event: calendar_v3.Schema$Event, fallbackDateKey: st
 function convertTaskToEvent(
   task: Omit<Task, "id"> & { id?: string },
   dateKey: string
-): calendar_v3.Schema$Event {
+): GoogleCalendarEvent {
   const [year, month, day] = dateKey.split("-").map(Number)
   const startDate = new Date(year, month - 1, day)
   startDate.setMinutes(task.startMinutes)
@@ -212,15 +291,16 @@ export async function createEvent(
   dateKey: string,
   task: Omit<Task, "id">
 ): Promise<{ googleEventId: string; task: Task }> {
-  const calendar = getCalendarClient(accessToken)
   const eventData = convertTaskToEvent(task, dateKey)
+  const createdEvent = await googleCalendarRequest<GoogleCalendarEvent>(
+    accessToken,
+    `/calendars/${encodeURIComponent(calendarId)}/events`,
+    {
+      method: "POST",
+      body: JSON.stringify(eventData),
+    }
+  )
 
-  const response = await calendar.events.insert({
-    calendarId,
-    requestBody: eventData,
-  })
-
-  const createdEvent = response.data
   return {
     googleEventId: createdEvent.id!,
     task: convertEventToTask(createdEvent, dateKey),
@@ -234,16 +314,17 @@ export async function updateEvent(
   googleEventId: string,
   task: Omit<Task, "id">
 ): Promise<Task> {
-  const calendar = getCalendarClient(accessToken)
   const eventData = convertTaskToEvent(task, dateKey)
+  const updatedEvent = await googleCalendarRequest<GoogleCalendarEvent>(
+    accessToken,
+    `/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(googleEventId)}`,
+    {
+      method: "PUT",
+      body: JSON.stringify(eventData),
+    }
+  )
 
-  const response = await calendar.events.update({
-    calendarId,
-    eventId: googleEventId,
-    requestBody: eventData,
-  })
-
-  return convertEventToTask(response.data, dateKey)
+  return convertEventToTask(updatedEvent, dateKey)
 }
 
 export async function deleteEvent(
@@ -251,10 +332,11 @@ export async function deleteEvent(
   calendarId: string,
   googleEventId: string
 ): Promise<void> {
-  const calendar = getCalendarClient(accessToken)
-
-  await calendar.events.delete({
-    calendarId,
-    eventId: googleEventId,
-  })
+  await googleCalendarRequest<void>(
+    accessToken,
+    `/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(googleEventId)}`,
+    {
+      method: "DELETE",
+    }
+  )
 }

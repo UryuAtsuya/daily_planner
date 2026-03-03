@@ -1,36 +1,67 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Daily Planner Web
 
-## Getting Started
+Next.js 16 app for a daily planner with Google sign-in and Google Calendar sync.
 
-First, run the development server:
+## Local Development
+
+Run the development server:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open `http://localhost:3000`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Required local environment variables:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+GOOGLE_CLIENT_ID=...
+GOOGLE_CLIENT_SECRET=...
+AUTH_SECRET=...
+NEXTAUTH_URL=http://localhost:3000
+```
 
-## Learn More
+Google OAuth redirect URI for local development:
 
-To learn more about Next.js, take a look at the following resources:
+```text
+http://localhost:3000/api/auth/callback/google
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Cloudflare Workers
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+This repository is prepared for Cloudflare Workers with OpenNext.
 
-## Deploy on Vercel
+1. Authenticate Wrangler.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+npx wrangler login
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+2. Set production secrets in Cloudflare.
+
+```bash
+npx wrangler secret put GOOGLE_CLIENT_ID
+npx wrangler secret put GOOGLE_CLIENT_SECRET
+npx wrangler secret put AUTH_SECRET
+npx wrangler secret put NEXTAUTH_URL
+```
+
+3. Preview the production build locally.
+
+```bash
+npm run preview
+```
+
+4. Deploy to Cloudflare Workers.
+
+```bash
+npm run deploy
+```
+
+Google OAuth redirect URI for production:
+
+```text
+https://<your-worker-domain>/api/auth/callback/google
+```
+
+If you attach a custom domain, add that exact callback URL in Google Auth Platform as well.
