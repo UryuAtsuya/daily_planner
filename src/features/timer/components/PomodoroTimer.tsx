@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import { useSession } from 'next-auth/react';
 import { usePomodoroStore } from '../stores/pomodoroStore';
 import { Play, Pause, RotateCcw, SkipForward } from 'lucide-react';
 
@@ -24,14 +25,21 @@ export function PomodoroTimer() {
     pauseTimer,
     resetTimer,
     skipSession,
+    setUserId,
     tick,
   } = usePomodoroStore();
+  const { data: session } = useSession();
 
   useEffect(() => {
     if (status !== 'running') return;
     const interval = setInterval(() => tick(), 1000);
     return () => clearInterval(interval);
   }, [status, tick]);
+
+  useEffect(() => {
+    const nextUserId = session?.user?.email ?? session?.user?.name ?? null;
+    setUserId(nextUserId);
+  }, [session?.user?.email, session?.user?.name, setUserId]);
 
   const totalSeconds = isWorkTime
     ? workDuration * 60

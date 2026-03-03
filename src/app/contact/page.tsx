@@ -1,5 +1,7 @@
 import Link from "next/link"
 
+const CONTACT_FORM_URL = "https://docs.google.com/forms/d/e/1FAIpQLSdy802ZmtHCQEll-jc_mzypWAL3ZJy23EkIyUU98YVvJfqw7Q/viewform?usp=publish-editor"
+
 export const metadata = {
   title: "お問い合わせ | Daily Planner",
 }
@@ -10,13 +12,30 @@ export default function ContactPage() {
       <article className="glass-panel max-w-3xl mx-auto p-6 sm:p-8 space-y-5">
         <h1 className="text-3xl font-display ui-text-strong">お問い合わせ</h1>
         <p className="font-body text-sm ui-text-soft">
-          サービスに関するお問い合わせ、広告掲載に関するご連絡は以下までお願いします。
+          サービスに関するお問い合わせ、広告掲載に関するご連絡は、以下のフォームからお願いします。
         </p>
 
         <section className="rounded-xl border ui-border bg-[hsl(var(--ui-surface-soft))] p-4 font-body text-sm ui-text-soft space-y-2">
-          <p>メール: contact@example.com</p>
-          <p>件名例: Daily Planner お問い合わせ</p>
+          <p>受付窓口: Google Forms</p>
           <p>回答までに数営業日いただく場合があります。</p>
+          <p>お問い合わせ内容は Google が提供するフォーム基盤を通じて送信されます。</p>
+          <p>機微情報、パスワード、決済情報などは送信しないでください。</p>
+        </section>
+
+        <div className="pt-1">
+          <a
+            href={CONTACT_FORM_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="primary-button inline-flex"
+          >
+            お問い合わせフォームを開く
+          </a>
+        </div>
+
+        <section className="rounded-xl border ui-border bg-[hsl(var(--ui-surface-soft))] p-4 font-body text-sm ui-text-soft space-y-2">
+          <p>Google Forms の利用には、Google の利用条件とプライバシーポリシーが適用される場合があります。</p>
+          <p>送信前に、内容と入力情報を確認のうえご利用ください。</p>
         </section>
 
         <section className="space-y-2 font-body text-sm ui-text-soft">
@@ -25,6 +44,7 @@ export default function ContactPage() {
         </section>
 
         <div className="flex flex-wrap gap-2 pt-3">
+          <Link href="/about" className="pill-chip text-sm font-body">このサービスについて</Link>
           <Link href="/privacy-policy" className="pill-chip text-sm font-body">プライバシーポリシー</Link>
           <Link href="/terms" className="pill-chip text-sm font-body">利用規約</Link>
           <Link href="/" className="pill-chip text-sm font-body">トップへ戻る</Link>

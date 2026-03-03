@@ -27,7 +27,7 @@ interface DailyPlannerViewProps {
     onNextDay: () => void
     onAddModal: () => void
     onEditModal: (task: Task) => void
-    onDelete: (id: string) => void
+    onDelete: (task: Task) => void
     onSyncToGoogle: (task: Task) => void
     onBulkSync: () => void
     onTaskAdjust: (taskId: string, start: number, duration: number) => void

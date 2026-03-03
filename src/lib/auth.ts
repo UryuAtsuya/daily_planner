@@ -79,10 +79,18 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             // Initial sign in
             if (account) {
                 return {
+                    ...token,
                     accessToken: account.access_token,
-                    expiresAt: account.expires_at,
-                    refreshToken: account.refresh_token,
+                    expiresAt:
+                        account.expires_at ??
+                        Math.floor(Date.now() / 1000 + (account.expires_in ?? 3600)),
+                    refreshToken: account.refresh_token ?? token.refreshToken,
+                    error: undefined,
                 }
+            }
+
+            if (!token.accessToken || !token.expiresAt) {
+                return token
             }
 
             // Return previous token if the access token has not expired yet

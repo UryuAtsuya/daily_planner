@@ -129,6 +129,7 @@ export function AuthPage({ onAuthStart }: AuthPageProps) {
 
                         <footer className="mt-7 pt-5 border-t border-[hsl(var(--ui-line))] text-xs text-[hsl(var(--ui-text-muted))]">
                             <div className="flex items-center gap-4">
+                                <Link href="/about" className="hover:text-[hsl(var(--ui-text-strong))] transition-colors">About</Link>
                                 <Link href="/privacy-policy" className="hover:text-[hsl(var(--ui-text-strong))] transition-colors">Privacy</Link>
                                 <Link href="/terms" className="hover:text-[hsl(var(--ui-text-strong))] transition-colors">Terms</Link>
                             </div>

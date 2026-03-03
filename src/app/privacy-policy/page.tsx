@@ -9,7 +9,7 @@ export default function PrivacyPolicyPage() {
     <main className="min-h-screen app-surface px-4 py-10">
       <article className="glass-panel max-w-3xl mx-auto p-6 sm:p-8 space-y-5">
         <h1 className="text-3xl font-display ui-text-strong">プライバシーポリシー</h1>
-        <p className="font-body ui-text-soft text-sm">最終更新日: 2026-02-14</p>
+        <p className="font-body ui-text-soft text-sm">最終更新日: 2026-03-01</p>
 
         <section className="space-y-2 font-body text-sm ui-text-soft">
           <h2 className="text-xl font-display ui-text-strong">1. 取得する情報</h2>
@@ -28,16 +28,21 @@ export default function PrivacyPolicyPage() {
 
         <section className="space-y-2 font-body text-sm ui-text-soft">
           <h2 className="text-xl font-display ui-text-strong">4. 外部サービス</h2>
-          <p>本サービスでは、Google（認証・カレンダー連携）やクラウド基盤、分析基盤等の外部サービスを利用することがあります。</p>
+          <p>本サービスでは、Google（認証・カレンダー連携・お問い合わせフォーム）、クラウド基盤、分析基盤等の外部サービスを利用することがあります。</p>
+          <p>お問い合わせフォームから送信された情報は、Google が提供するフォーム基盤上で処理・保存される場合があります。</p>
         </section>
 
         <section className="space-y-2 font-body text-sm ui-text-soft">
           <h2 className="text-xl font-display ui-text-strong">5. 問い合わせ窓口</h2>
           <p>個人情報の取り扱いに関するお問い合わせは、<Link href="/contact" className="text-[hsl(var(--ui-brand))] underline">お問い合わせページ</Link>よりご連絡ください。</p>
+          <p>お問い合わせフォームには、必要な範囲を超える個人情報、機微情報、認証情報を入力しないようお願いします。</p>
         </section>
 
         <div className="pt-3">
-          <Link href="/" className="pill-chip text-sm font-body">トップへ戻る</Link>
+          <div className="flex flex-wrap gap-2">
+            <Link href="/about" className="pill-chip text-sm font-body">このサービスについて</Link>
+            <Link href="/" className="pill-chip text-sm font-body">トップへ戻る</Link>
+          </div>
         </div>
       </article>
     </main>

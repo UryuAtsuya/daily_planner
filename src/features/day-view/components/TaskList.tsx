@@ -7,7 +7,7 @@ import { Pencil, Trash2, Cloud, Check } from "lucide-react"
 interface TaskListProps {
   tasks: Task[]
   onEdit: (task: Task) => void
-  onDelete: (id: string) => void
+  onDelete: (task: Task) => void
   onSyncToGoogle?: (task: Task) => void
   onSelect?: (task: Task) => void
   selectedTaskId?: string
@@ -102,7 +102,7 @@ export function TaskList({
               <button
                 onClick={(e) => {
                   e.stopPropagation()
-                  onDelete(task.id)
+                  onDelete(task)
                 }}
                 className="inline-flex items-center justify-center p-2 rounded-xl text-stone-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
                 aria-label={`${task.label}を削除`}

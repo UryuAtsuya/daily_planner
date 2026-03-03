@@ -446,6 +446,12 @@ export function SettingsPage({
 
                     <div className="flex flex-wrap gap-3">
                         <Link
+                            href="/about"
+                            className="px-4 py-2 rounded-xl border border-[hsl(var(--ui-line))] bg-[hsl(var(--ui-surface-soft))] text-xs font-semibold text-[hsl(var(--ui-text-muted))] hover:bg-[hsl(var(--ui-surface))] hover:text-[hsl(var(--ui-text-strong))] transition-colors"
+                        >
+                            このサービスについて
+                        </Link>
+                        <Link
                             href="/privacy-policy"
                             className="px-4 py-2 rounded-xl border border-[hsl(var(--ui-line))] bg-[hsl(var(--ui-surface-soft))] text-xs font-semibold text-[hsl(var(--ui-text-muted))] hover:bg-[hsl(var(--ui-surface))] hover:text-[hsl(var(--ui-text-strong))] transition-colors"
                         >

@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import { PomodoroSession } from '../types';
 import { POMODORO_DEFAULTS } from '@/lib/constants';
 
@@ -10,6 +11,7 @@ type PomodoroStore = {
     timeLeft: number; // seconds
     currentSession: number;
     isWorkTime: boolean;
+    userId: string | null;
 
     // Settings
     workDuration: number; // minutes
@@ -21,6 +23,7 @@ type PomodoroStore = {
     sessions: PomodoroSession[];
 
     // Actions
+    setUserId: (userId: string | null) => void;
     startTimer: () => void;
     pauseTimer: () => void;
     resetTimer: () => void;
@@ -35,12 +38,13 @@ type PomodoroStore = {
     tick: () => void;
 };
 
-export const usePomodoroStore = create<PomodoroStore>((set, get) => ({
+export const usePomodoroStore = create<PomodoroStore>()(persist((set, get) => ({
     // Initial state
     status: 'idle',
     timeLeft: POMODORO_DEFAULTS.FOCUS_TIME * 60,
     currentSession: 0,
     isWorkTime: true,
+    userId: null,
 
     // Default settings
     workDuration: POMODORO_DEFAULTS.FOCUS_TIME,
@@ -49,6 +53,10 @@ export const usePomodoroStore = create<PomodoroStore>((set, get) => ({
     sessionsUntilLongBreak: POMODORO_DEFAULTS.SESSIONS_UNTIL_LONG_BREAK,
 
     sessions: [],
+
+    setUserId: (userId) => {
+        set({ userId });
+    },
 
     startTimer: () => {
         const state = get();
@@ -105,7 +113,7 @@ export const usePomodoroStore = create<PomodoroStore>((set, get) => ({
             const now = new Date().toISOString();
             const session: PomodoroSession = {
                 id: Date.now().toString(),
-                user_id: 'mock-user',
+                user_id: state.userId ?? 'anonymous',
                 duration: state.workDuration,
                 completed: true,
                 started_at: now,
@@ -151,4 +159,17 @@ export const usePomodoroStore = create<PomodoroStore>((set, get) => ({
             get().completeSession();
         }
     },
+}), {
+    name: 'daily-planner-pomodoro',
+    partialize: (state) => ({
+        timeLeft: state.timeLeft,
+        currentSession: state.currentSession,
+        isWorkTime: state.isWorkTime,
+        userId: state.userId,
+        workDuration: state.workDuration,
+        shortBreakDuration: state.shortBreakDuration,
+        longBreakDuration: state.longBreakDuration,
+        sessionsUntilLongBreak: state.sessionsUntilLongBreak,
+        sessions: state.sessions,
+    }),
 }));

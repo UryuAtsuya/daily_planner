@@ -16,7 +16,7 @@ const outfitFont = Outfit({
 
 export const metadata: Metadata = {
   title: "Daily Planner",
-  description: "Plan your day visually with a circular schedule chart",
+  description: "Googleカレンダー連携、Todo管理、集中時間の記録で、1日の予定と実行を整理するデイリープランナー",
   manifest: "/manifest.json",
   icons: {
     icon: "/icons/icon-192x192.png",

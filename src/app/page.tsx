@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import { useSession } from "next-auth/react"
 import Image from "next/image"
 import { ChartAppearance, DEFAULT_CHART_APPEARANCE } from "@/features/day-view/constants/chartAppearance"
-import { ACCENT_THEME_STORAGE_KEY, CHART_APPEARANCE_STORAGE_KEY, TEMPLATES_STORAGE_KEY, THEME_STORAGE_KEY } from "@/features/day-view/constants/storageKeys"
+import { ACCENT_THEME_STORAGE_KEY, CHART_APPEARANCE_STORAGE_KEY, DIARY_STORAGE_KEY, TEMPLATES_STORAGE_KEY, THEME_STORAGE_KEY } from "@/features/day-view/constants/storageKeys"
 import { TaskModal } from "@/features/day-view/components/TaskModal"
 import { SettingsPage } from "@/features/settings/SettingsPage"
 import { useTaskStore } from "@/features/day-view/hooks/useTaskStore"
@@ -28,6 +28,8 @@ interface CreateEventResponse {
   googleEventId: string
   task: Task
 }
+
+type UpdateEventResponse = Task
 
 export default function Home() {
   const { tasks, isLoaded, addTask, updateTask, deleteTask } = useTaskStore()
@@ -57,7 +59,17 @@ export default function Home() {
     }
   }, [isDarkMode])
 
-  const [diaryEntries, setDiaryEntries] = useState<Record<string, string>>({})
+  const [diaryEntries, setDiaryEntries] = useState<Record<string, string>>(() => {
+    if (typeof window === "undefined") return {}
+    const raw = localStorage.getItem(DIARY_STORAGE_KEY)
+    if (!raw) return {}
+    try {
+      const parsed = JSON.parse(raw) as Record<string, string>
+      return parsed && typeof parsed === "object" ? parsed : {}
+    } catch {
+      return {}
+    }
+  })
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [customTemplates, setCustomTemplates] = useState<TaskTemplate[]>(() => {
     if (typeof window === "undefined") return TASK_TEMPLATES
@@ -141,6 +153,40 @@ export default function Home() {
     } catch (error) { console.error(error) }
   }, [currentDateKey, selectedCalendarId, session?.accessToken])
 
+  const updateGoogleCalendarEvent = useCallback(async (task: Task, data: Omit<Task, "id">) => {
+    const googleEventId = extractGoogleEventId(task)
+    if (!googleEventId) throw new Error("Missing Google event ID")
+
+    const res = await fetch(`/api/calendar/events/${encodeURIComponent(googleEventId)}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        ...data,
+        calendarId: selectedCalendarId,
+      }),
+    })
+
+    if (!res.ok) {
+      throw new Error("Failed to update Google Calendar event")
+    }
+
+    return res.json() as Promise<UpdateEventResponse>
+  }, [selectedCalendarId])
+
+  const deleteGoogleCalendarEvent = useCallback(async (task: Task) => {
+    const googleEventId = extractGoogleEventId(task)
+    if (!googleEventId) throw new Error("Missing Google event ID")
+
+    const params = new URLSearchParams({ calendarId: selectedCalendarId })
+    const res = await fetch(`/api/calendar/events/${encodeURIComponent(googleEventId)}?${params.toString()}`, {
+      method: "DELETE",
+    })
+
+    if (!res.ok) {
+      throw new Error("Failed to delete Google Calendar event")
+    }
+  }, [selectedCalendarId])
+
   const handleSyncToGoogle = async (task: Task) => {
     if (!session?.accessToken) return
     setIsSyncing(true)
@@ -177,11 +223,51 @@ export default function Home() {
     }
   }
 
-  const handleTaskAdjust = (taskId: string, startMinutes: number, durationMinutes: number) => {
+  const handleTaskAdjust = async (taskId: string, startMinutes: number, durationMinutes: number) => {
     const task = allTasks.find(t => t.id === taskId)
-    if (task) {
-      updateTask(taskId, { startMinutes, durationMinutes })
+    if (!task) return
+
+    const nextData: Omit<Task, "id"> = {
+      label: task.label,
+      description: task.description,
+      nextAction: task.nextAction,
+      itemsToBring: task.itemsToBring,
+      startMinutes,
+      durationMinutes,
+      color: task.color,
+      dateKey: task.dateKey,
+      categoryId: task.categoryId,
+      icon: task.icon,
+      googleEventId: task.googleEventId,
+      syncStatus: task.syncStatus,
     }
+
+    if (extractGoogleEventId(task)) {
+      setIsSyncing(true)
+      try {
+        await updateGoogleCalendarEvent(task, nextData)
+        if (task.id.startsWith("google-")) {
+          await fetchGoogleEvents()
+        } else {
+          updateTask(taskId, {
+            startMinutes,
+            durationMinutes,
+            syncStatus: "synced",
+          })
+          await fetchGoogleEvents()
+        }
+      } catch (error) {
+        console.error(error)
+        if (!task.id.startsWith("google-")) {
+          updateTask(taskId, { syncStatus: "error" })
+        }
+      } finally {
+        setIsSyncing(false)
+      }
+      return
+    }
+
+    updateTask(taskId, { startMinutes, durationMinutes })
   }
 
   const handleApplyTemplate = (templateId: string) => {
@@ -195,12 +281,62 @@ export default function Home() {
 
   const handleSave = async (data: Omit<Task, "id">) => {
     if (editingTask) {
-      updateTask(editingTask.id, data)
+      if (extractGoogleEventId(editingTask)) {
+        setIsSyncing(true)
+        try {
+          const updatedTask = await updateGoogleCalendarEvent(editingTask, data)
+          if (editingTask.id.startsWith("google-")) {
+            await fetchGoogleEvents()
+          } else {
+            updateTask(editingTask.id, {
+              ...data,
+              googleEventId: updatedTask.id.replace("google-", ""),
+              syncStatus: "synced",
+            })
+            await fetchGoogleEvents()
+          }
+        } catch (error) {
+          console.error(error)
+          if (!editingTask.id.startsWith("google-")) {
+            updateTask(editingTask.id, { syncStatus: "error" })
+          }
+          return false
+        } finally {
+          setIsSyncing(false)
+        }
+      } else {
+        updateTask(editingTask.id, data)
+      }
     } else {
       addTask({ ...data, dateKey: currentDateKey, syncStatus: "local" })
     }
     setIsModalOpen(false)
     return true
+  }
+
+  const handleDeleteTask = async (task: Task) => {
+    if (extractGoogleEventId(task)) {
+      setIsSyncing(true)
+      try {
+        await deleteGoogleCalendarEvent(task)
+        if (task.id.startsWith("google-")) {
+          await fetchGoogleEvents()
+        } else {
+          deleteTask(task.id)
+          await fetchGoogleEvents()
+        }
+      } catch (error) {
+        console.error(error)
+        if (!task.id.startsWith("google-")) {
+          updateTask(task.id, { syncStatus: "error" })
+        }
+      } finally {
+        setIsSyncing(false)
+      }
+      return
+    }
+
+    deleteTask(task.id)
   }
 
   // Effects
@@ -226,6 +362,11 @@ export default function Home() {
     html.dataset.accent = accentTheme
     localStorage.setItem(ACCENT_THEME_STORAGE_KEY, accentTheme)
   }, [accentTheme])
+
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    localStorage.setItem(DIARY_STORAGE_KEY, JSON.stringify(diaryEntries))
+  }, [diaryEntries])
 
   useEffect(() => {
     if (session?.accessToken) {
@@ -271,7 +412,7 @@ export default function Home() {
             onNextDay={() => setCurrentDate(p => addDays(p, 1))}
             onAddModal={() => { setEditingTask(undefined); setIsModalOpen(true) }}
             onEditModal={(task) => { setSelectedTaskId(task.id); setEditingTask(task); setIsModalOpen(true) }}
-            onDelete={deleteTask}
+            onDelete={handleDeleteTask}
             onSyncToGoogle={handleSyncToGoogle}
             onBulkSync={handleBulkSyncToGoogle}
             onTaskAdjust={handleTaskAdjust}
