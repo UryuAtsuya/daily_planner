@@ -4,6 +4,15 @@
   "main": ".open-next/worker.js",
   "compatibility_date": "2026-03-03",
   "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "vars": {
+    "NEXT_PUBLIC_SITE_URL": "https://circleplan.work"
+  },
+  "routes": [
+    {
+      "pattern": "circleplan.work",
+      "custom_domain": true
+    }
+  ],
   "assets": {
     "directory": ".open-next/assets",
     "binding": "ASSETS"

@@ -4,6 +4,8 @@ import Script from "next/script";
 import "./globals.css";
 import { Providers } from "./providers";
 
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://circleplan.work";
+
 const interFont = Inter({
   variable: "--font-inter",
   subsets: ["latin"],
@@ -15,6 +17,7 @@ const outfitFont = Outfit({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(siteUrl),
   title: "Daily Planner",
   description: "Googleカレンダー連携、Todo管理、集中時間の記録で、1日の予定と実行を整理するデイリープランナー",
   manifest: "/manifest.json",

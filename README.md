@@ -46,6 +46,14 @@ npx wrangler secret put AUTH_SECRET
 npx wrangler secret put NEXTAUTH_URL
 ```
 
+Use this production URL when prompted for `NEXTAUTH_URL`:
+
+```text
+https://circleplan.work
+```
+
+`NEXT_PUBLIC_SITE_URL` is already set in [`wrangler.jsonc`](/Users/uryuatsuya/A2A/daily-planner-web/wrangler.jsonc) to `https://circleplan.work`.
+
 3. Preview the production build locally.
 
 ```bash
@@ -61,7 +69,7 @@ npm run deploy
 Google OAuth redirect URI for production:
 
 ```text
-https://<your-worker-domain>/api/auth/callback/google
+https://circleplan.work/api/auth/callback/google
 ```
 
-If you attach a custom domain, add that exact callback URL in Google Auth Platform as well.
+The custom domain route for `circleplan.work` is configured in [`wrangler.jsonc`](/Users/uryuatsuya/A2A/daily-planner-web/wrangler.jsonc). Deploy from the Cloudflare account that owns that zone, then add the exact callback URL above in Google Auth Platform as well.
